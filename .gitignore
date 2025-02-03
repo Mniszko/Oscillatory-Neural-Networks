@@ -1,0 +1,6 @@
+temp_*
+__pycache__
+*.png
+*.jpg
+*.svg
+*.eps
