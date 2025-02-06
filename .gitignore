@@ -4,3 +4,5 @@ __pycache__
 *.jpg
 *.svg
 *.eps
+output*
+*.txt

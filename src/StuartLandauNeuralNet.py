@@ -145,7 +145,7 @@ def main_SL_training_preamble(N, T, dt, omega, alpha, batch_size, random_init_ti
     input_mask = jnp.ones(N)
 
 
-    states = solve_ode_free((init_amplitudes, init_phases), times, weights, alpha, omega, pField, uField, connections_neuronwise, input_mask)
+    states = solve_SL_ode_free((init_amplitudes, init_phases), times, weights, alpha, omega, pField, uField, connections_neuronwise, input_mask)
 
     init_amplitudes = states[0][-1]
     init_phases = states[1][-1]

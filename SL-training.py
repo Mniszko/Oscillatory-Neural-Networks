@@ -13,13 +13,13 @@ determine_distance = determine_SL_binary_distance
 solve_ode_free = solve_SL_ode_free
 solve_ode_nudged = solve_SL_ode_nudged
 
-"""
 determine_accuracy = XOR_problem_SL_determine_accuracy
 map_features_and_labels = XOR_problem_SL_map_features_and_labels
-"""
 
+"""
 determine_accuracy = double_XOR_SL_determine_accuracy
 map_features_and_labels = double_XOR_SL_map_features_and_labels
+"""
 
 def training_function(name, N, do_save, num_of_epochs, learning_rate):
     #compiled here because it needs static N
@@ -45,7 +45,7 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate):
     dt = 0.01
     omega = jnp.zeros(N)
     alpha = 1.
-    batch_size = 16
+    batch_size = 4
     random_init_times = 1
     inputn = [0,1]
     outputn = [2,3]
@@ -73,13 +73,10 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate):
     features = preamble['features']
     labels = preamble['labels']
 
-    print(init_amplitudes)
-
     distances = []
     accuracies = []
 
     print(f"\tAmplitude relative: \t{amplitude_relative}")
-    print(f"\tinput mask: \t\t{input_mask}")
 
     # training the network
     for epoch in range(num_of_epochs):
@@ -92,8 +89,9 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate):
         distance_temp = []
         accuracies_temp = []
 
-        if (epoch+1)%100 == 0 or epoch==0:
+        if (epoch+1)%10 == 0 or epoch==0:
             print(f"epoch number {epoch+1}")
+        
         batches = shuffle_and_batch(features, labels, batch_size, rng_key)
         for batch in batches:
             for feature, label in batch:
@@ -123,8 +121,11 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate):
                 distance_temp.append(determine_distance(amplitudes, label, outputn))
                 accuracies_temp.append(determine_accuracy(amplitudes, label, outputn, amplitude_relative))
 
-                if (epoch+1)%100 == 0 or epoch==0:
+                """
+                # debugging
+                if (epoch+1)%10 == 0 or epoch==0:
                     print(f"output vs label: {amplitudes[outputn]} ---- {label}")
+                """
 
                 states = solve_ode_nudged((init_amplitudes, init_phases), times, weights, alpha, omega, pField, uField, connections_neuronwise, input_mask, beta, target)
                 amplitudes = states[0][-1]
@@ -159,26 +160,30 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate):
             print(f"Too much time taken for epoch {epoch}: {time1-time0} ------- threshold = {10}")
             return 1
 
+        """
+        # debugging
         if (epoch+1)%100 == 0 or epoch==0:
             print(f"Finished epoch number {epoch+1}")
             print(f"distances read {jnp.array(distance_temp).tolist()}")
             print(f"accuracies read {jnp.array(accuracies_temp).tolist()}")
             print(f"time taken for the epoch: {time1-time0}")
+        """
 
     if do_save=="y" or do_save=="yes":
         save_array_to_file(jnp.array(distances), name + ".txt")
         save_array_to_file(jnp.array(accuracies), name + "_acc.txt")
 
     # plotting
-    fig, axes = plt.subplots(ncols=2, figsize=(12, 6))
-    axes[0].plot(distances, label="amplitude", c="r")
-    axes[0].set_title("distances")
-    axes[0].grid()
-    axes[1].plot(accuracies, c="b")
-    axes[1].set_title("accuracies")
-    axes[1].grid()
-    plt.savefig("XOR_SLNN_distances.png")
-    plt.show()
+    elif do_save=="n" or do_save=="no"
+        fig, axes = plt.subplots(ncols=2, figsize=(12, 6))
+        axes[0].plot(distances, label="amplitude", c="r")
+        axes[0].set_title("distances")
+        axes[0].grid()
+        axes[1].plot(accuracies, c="b")
+        axes[1].set_title("accuracies")
+        axes[1].grid()
+        plt.savefig("XOR_SLNN_distances.png")
+        plt.show()
 
     return 0
 

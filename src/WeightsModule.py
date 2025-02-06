@@ -99,10 +99,6 @@ def create_weight_update_mask(N, inputn):
     weight_update_mask = weight_update_mask.at[diagonal_indices, diagonal_indices].set(0)
     return weight_update_mask
 
-#-----------------------------------------------------------------------------------------
-# following two methods should be replaced with initial parameters module as in SL network 
-#-----------------------------------------------------------------------------------------
-
 def create_kuramoto_symmetric_weights(N, loc, scale, inputn, rng_key):
     """
     Create a symmetric weight matrix with random values, ensuring weights between neurons in inputn are zero.

@@ -150,21 +150,31 @@ def main():
         if (epoch+1)%100 == 0 or epoch==0:
             print(f"Finished epoch number {epoch+1}")
             print(f"time taken for the epoch: {time1-time0}")
-            
+        
+        """
+        # debugging
+        if (epoch+1)%100 == 0 or epoch==0:
+            print(f"Finished epoch number {epoch+1}")
+            print(f"distances read {jnp.array(distance_temp).tolist()}")
+            print(f"accuracies read {jnp.array(accuracies_temp).tolist()}")
+            print(f"time taken for the epoch: {time1-time0}")
+        """
+        
     if do_save=="y" or do_save=="yes":
         save_array_to_file(jnp.array(distances), name + ".txt")
         save_array_to_file(jnp.array(accuracies), name + "_acc.txt")
 
     # plotting
-    fig, axes = plt.subplots(ncols=2, figsize=(12, 6))
-    axes[0].plot(distances, label="distance", c="r")
-    axes[0].set_title("distances")
-    axes[0].grid()
-    axes[1].plot(accuracies, c="b")
-    axes[1].set_title("accuracies")
-    axes[1].grid()
-    plt.savefig("XOR_SLNN_distances.png")
-    plt.show()
+    elif do_save=="n" or do_save=="no"
+        fig, axes = plt.subplots(ncols=2, figsize=(12, 6))
+        axes[0].plot(distances, label="distance", c="r")
+        axes[0].set_title("distances")
+        axes[0].grid()
+        axes[1].plot(accuracies, c="b")
+        axes[1].set_title("accuracies")
+        axes[1].grid()
+        plt.savefig("XOR_SLNN_distances.png")
+        plt.show()
     
     return 0
 

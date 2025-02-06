@@ -1,5 +1,6 @@
 # import numpy as np
 # from scipy.integrate import odeint
+import numpy as np
 import jax as jx
 import jax.numpy as jnp
 from jax.experimental.ode import odeint
@@ -51,20 +52,24 @@ def read_and_plot(filename, ax, x_range=(0, 100), y_bins=50, x_bins=100, y_max=5
 
     # Determine the effective maximum y limit
     actual_y_max = min(max(all_y), y_max)
+    y_min = min(all_y)
+    if filename[-8:]=="_acc.txt":
+        y_min = 0
+        actual_y_max = 1
 
     if plot_scale == "log":
-        y_space = np.logspace(np.log10(min(all_y)), np.log10(actual_y_max), y_bins + 1)
+        y_space = np.logspace(np.log10(y_min), np.log10(actual_y_max), y_bins + 1)
         print(f"The effective y-axis maximum is set to: {actual_y_max}")
         ax.set_yscale('log')
         ax.set_ylabel("Value (log scale)")
     else:  # plot_scale == "lin"
-        y_space = np.linspace(min(all_y), actual_y_max, y_bins + 1)
+        y_space = np.linspace(y_min, actual_y_max, y_bins + 1)
         ax.set_yscale('linear')
         ax.set_ylabel("Value")
 
     # Compute the 2D histogram of counts
     counts, xedges, yedges = np.histogram2d(
-        all_x, all_y, bins=[x_space, y_space], range=[x_range, (min(all_y), actual_y_max)]
+        all_x, all_y, bins=[x_space, y_space], range=[x_range, (y_min, actual_y_max)]
     )
 
     # Plot the histogram
