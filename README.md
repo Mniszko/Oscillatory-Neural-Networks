@@ -14,7 +14,7 @@ There is currently no requirements file, though as for January 2025 code (except
     python3 plot_dis_and_ac.py <output_distances_name_without_filetype> <y_or_n_for_distance_plotting> <lin_or_log_for_distance_scale> <y_or_n_for_accuracy_plotting> <output_image_name_without_filetype>
 
 <br>
-<strong>SL-dynamics.py</strong> is a code with different dependencies for plotting main parameters (amplitude and phase of the oscillator) for debugging purposes mostly. It is my playing field so the code is messy and cumbersome to read.
+<strong>SL-dynamics.py</strong> is a code with different dependencies for plotting main parameters (amplitude and phase of the oscillator) for debugging purposes mostly. It operates solely on 
 <br>
 <strong>SL-training.py, K-training.py</strong> are programs of nearly identical structure, each designed for different oscillatory model. They are run individually or via <em>auto_run.sh</em> script. Individual execution can be done with command:
 
@@ -27,6 +27,11 @@ There is currently no requirements file, though as for January 2025 code (except
 
 <h2>ADDITIONAL INFORMATIONS</h2>
 
-- Currently SL model and training runs with real weight values only, I'll add puraly imaginary and complex values soon.
+<p>
 
-- training parameters are updated according to equation from our notes, though before running next set of simulations I should add update matrices and vectors normalization according to some arbitrary rules, at least in cases where gradient descent produces values too small to make change or approaching infinity.
+1. Currently SL model and training runs with complex values. Before running the code for polaritonic network one should multiply weights_real and weights_real_matrix by 0 after initialization in <em>SL-training.py</em> and comment out line responsible for updating weight values in the same file, namely, line that reads:
+
+        weights_real_matrix -= learning_rate * weight_real_gradient * weight_update_mask
+
+2. training parameters are updated according to equation from our notes, though before running next set of simulations I should add update matrices and vectors normalization according to some arbitrary rules, at least in cases where gradient descent produces values too small to make change or approaching infinity.
+</p>

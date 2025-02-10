@@ -7,7 +7,7 @@ from .WeightsModule import create_random_connections, create_square_lattice_conn
 
 # in this code I'm to use input with two methods simultaneously - via external force parameter (u_n) and via specific weight stabilization.
 @jit
-def network_evolution(state, t, W, alpha, omega, pField, uField, coupled_neuron, input_mask):
+def network_evolution(state, t, Wre, Wim, alpha, omega, pField, uField, coupled_neuron, input_mask):
     """
     Computes the derivatives of system parameters (amplitudes and phases)
 
@@ -31,17 +31,17 @@ def network_evolution(state, t, W, alpha, omega, pField, uField, coupled_neuron,
     coupled_phases = phases[coupled_neuron]
 
     # Compute amplitude derivatives (dden_dt)
-    amplitude_coupling = jnp.sum(W * coupled_amplitudes * jnp.cos(coupled_phases - phases[:, None]), axis=1)
+    amplitude_coupling = jnp.sum(coupled_amplitudes * (Wre * jnp.cos(coupled_phases - phases[:, None]) - Wim * jnp.sin(coupled_phases - phases[:, None])), axis=1)
     dden_dt = -alpha * amplitudes**3 + amplitudes * pField + amplitude_coupling + uField * jnp.cos(phases)
 
     # Compute phase derivatives (dphase_dt)
-    phase_coupling = jnp.sum(W * coupled_amplitudes / amplitudes[:, None] * jnp.sin(coupled_phases - phases[:, None]), axis=1)
+    phase_coupling = jnp.sum(Wre * coupled_amplitudes * jnp.sin(coupled_phases - phases[:, None]) + Wim * coupled_amplitudes * jnp.cos(coupled_phases - phases[:, None])/ amplitudes[:, None], axis=1)   
     dphase_dt = omega + phase_coupling - uField / amplitudes * jnp.sin(phases)
 
     return dden_dt * input_mask, dphase_dt * input_mask
 
 @jit
-def network_evolution_nudge(state, t, W, alpha, omega, pField, uField, coupled_neuron, input_mask, beta, target):
+def network_evolution_nudge(state, t, Wre, Wim, alpha, omega, pField, uField, coupled_neuron, input_mask, beta, target):
     """
     Computes the derivatives of system parameters (amplitudes and phases) after nudge of dynamics
 
@@ -67,23 +67,24 @@ def network_evolution_nudge(state, t, W, alpha, omega, pField, uField, coupled_n
     coupled_phases = phases[coupled_neuron]
 
     # Compute amplitude derivatives (dden_dt)
-    amplitude_coupling = jnp.sum(W * coupled_amplitudes * jnp.cos(coupled_phases - phases[:, None]), axis=1)
+    amplitude_coupling = jnp.sum(coupled_amplitudes * (Wre * jnp.cos(coupled_phases - phases[:, None]) - Wim * jnp.sin(coupled_phases - phases[:, None])), axis=1)
     dden_dt = -alpha * amplitudes**3 + amplitudes * pField + amplitude_coupling + uField * jnp.cos(phases)
     dden_dt += - beta*(amplitudes-target)
 
     # Compute phase derivatives (dphase_dt)
-    phase_coupling = jnp.sum(W * coupled_amplitudes / amplitudes[:, None] * jnp.sin(coupled_phases - phases[:, None]), axis=1)
+    phase_coupling = jnp.sum(Wre * coupled_amplitudes * jnp.sin(coupled_phases - phases[:, None]) + Wim * coupled_amplitudes * jnp.cos(coupled_phases - phases[:, None])/ amplitudes[:, None], axis=1)   
     dphase_dt = omega + phase_coupling - uField / amplitudes * jnp.sin(phases)
 
     return dden_dt * input_mask, dphase_dt * input_mask
 
 @jit
-def solve_SL_ode_free(state, times, weights, alpha, omega, pField, uField, coupled_neuron, input_mask):
+def solve_SL_ode_free(state, times, weights_real, weights_imaginary, alpha, omega, pField, uField, coupled_neuron, input_mask):
     return odeint(
         network_evolution,
         state,
         times,
-        weights,
+        weights_real,
+        weights_imaginary,
         alpha,
         omega,
         pField,
@@ -93,12 +94,13 @@ def solve_SL_ode_free(state, times, weights, alpha, omega, pField, uField, coupl
     )
 
 @jit
-def solve_SL_ode_nudged(state, times, weights, alpha, omega, pField, uField, coupled_neuron, input_mask, beta, target):
+def solve_SL_ode_nudged(state, times, weights_real, weights_imaginary, alpha, omega, pField, uField, coupled_neuron, input_mask, beta, target):
     return odeint(
         network_evolution_nudge,
         state,
         times,
-        weights,
+        weights_real,
+        weights_imaginary,
         alpha,
         omega,
         pField,
@@ -132,7 +134,7 @@ def main_SL_training_preamble(N, T, dt, omega, alpha, batch_size, random_init_ti
     map_features_and_labels - function mapping features and labels for a given problem to amplitudes
     """
     neurons, connections_neuronwise = initialize_neurons(N, inputn)
-    weights, weights_matrix, weight_update_mask, pField, uField = initialize_weights_and_SL_fields(N, inputn, connections_neuronwise, rng_key)
+    weights_real, weights_real_matrix, weights_imaginary, weights_imaginary_matrix, weight_update_mask, pField, uField = initialize_weights_and_SL_fields(N, inputn, connections_neuronwise, rng_key)
     beta, inv_nudge_step, inv_batch_size, inv_random_init_times = initialize_simulation_params(
         N, outputn, batch_size, random_init_times
     )
@@ -145,7 +147,7 @@ def main_SL_training_preamble(N, T, dt, omega, alpha, batch_size, random_init_ti
     input_mask = jnp.ones(N)
 
 
-    states = solve_SL_ode_free((init_amplitudes, init_phases), times, weights, alpha, omega, pField, uField, connections_neuronwise, input_mask)
+    states = solve_SL_ode_free((init_amplitudes, init_phases), times, weights_real, weights_imaginary, alpha, omega, pField, uField, connections_neuronwise, input_mask)
 
     init_amplitudes = states[0][-1]
     init_phases = states[1][-1]
@@ -154,8 +156,10 @@ def main_SL_training_preamble(N, T, dt, omega, alpha, batch_size, random_init_ti
     return {
         'neurons': neurons,
         'connections_neuronwise': connections_neuronwise,
-        'weights': weights,
-        'weights_matrix': weights_matrix,
+        'weights_real': weights_real,
+        'weights_real_matrix': weights_real_matrix,
+        'weights_imaginary': weights_imaginary,
+        'weights_imaginary_matrix': weights_imaginary_matrix,
         'weight_update_mask': weight_update_mask,
         'pField': pField,
         'uField': uField,

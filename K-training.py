@@ -165,7 +165,7 @@ def main():
         save_array_to_file(jnp.array(accuracies), name + "_acc.txt")
 
     # plotting
-    elif do_save=="n" or do_save=="no"
+    elif do_save=="n" or do_save=="no":
         fig, axes = plt.subplots(ncols=2, figsize=(12, 6))
         axes[0].plot(distances, label="distance", c="r")
         axes[0].set_title("distances")

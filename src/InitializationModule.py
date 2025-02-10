@@ -38,13 +38,15 @@ def initialize_neurons(N, inputn):
 
 # Function to initialize weights and fields
 def initialize_weights_and_SL_fields(N, inputn, connections_neuronwise, rng_key):
-    weights_matrix = create_symmetric_weights(N, 0., 1., inputn, rng_key)
+    weights_real_matrix = create_symmetric_weights(N, 0., 1., inputn, rng_key)
+    weights_imaginary_matrix = create_symmetric_weights(N, 0., 1., inputn, rng_key)
     weight_update_mask = create_weight_update_mask(N, inputn)
-    weights = weights_matrix[connections_neuronwise, jnp.arange(N)[:, None]]
+    weights_real = weights_real_matrix[connections_neuronwise, jnp.arange(N)[:, None]]
+    weights_imaginary = weights_imaginary_matrix[connections_neuronwise, jnp.arange(N)[:, None]]
 
     pField = jnp.zeros(N)
     uField = jax.random.uniform(rng_key, shape=(N,), minval=-30, maxval=30)
-    return weights, weights_matrix, weight_update_mask, pField, uField
+    return weights_real, weights_real_matrix, weights_imaginary, weights_imaginary_matrix, weight_update_mask, pField, uField
 
 
 def initialize_weights_and_K_fields(N, inputn, connections_neuronwise, rng_key):

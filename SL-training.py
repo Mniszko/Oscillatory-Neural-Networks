@@ -26,16 +26,22 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate):
     @jax.jit
     def calculate_energy_gradient(amplitudes, phases):
         # Allocate gradient_weights and gradient_biases
-        gradient_weights = jnp.zeros((N, N))
+        gradient_weights_real = jnp.zeros((N, N))
+        gradient_weights_imaginary = jnp.zeros((N, N))
         gradient_biases = amplitudes * jnp.cos(phases)
 
         # Vectorized calculation of gradient_weights
         i_indices, j_indices = jnp.triu_indices(N, k=1)
-        values = -amplitudes[i_indices] * amplitudes[j_indices] * jnp.cos(phases[i_indices] - phases[j_indices])
-        gradient_weights = gradient_weights.at[i_indices, j_indices].set(values)
-        gradient_weights = gradient_weights.at[j_indices, i_indices].set(values)  # Symmetric assignment
 
-        return gradient_weights, gradient_biases
+        values_real = -amplitudes[i_indices] * amplitudes[j_indices] * jnp.cos(phases[i_indices] - phases[j_indices])
+        gradient_weights_real = gradient_weights_real.at[i_indices, j_indices].set(values_real)
+        gradient_weights_real = gradient_weights_real.at[j_indices, i_indices].set(values_real)  # Symmetric assignment
+
+        values_imaginary = amplitudes[i_indices] * amplitudes[j_indices] * jnp.sin(phases[i_indices] - phases[j_indices])
+        gradient_weights_imaginary = gradient_weights_imaginary.at[i_indices, j_indices].set(values_imaginary)
+        gradient_weights_imaginary = gradient_weights_imaginary.at[j_indices, i_indices].set(values_imaginary)  # Symmetric assignment
+
+        return gradient_weights_real, gradient_weights_imaginary, gradient_biases
 
     rng_key = jax.random.PRNGKey(round(time.time()*1e7))
     if N<3:
@@ -48,7 +54,7 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate):
     batch_size = 4
     random_init_times = 1
     inputn = [0,1]
-    outputn = [2,3]
+    outputn = [2]
     inputn = jnp.array(inputn)
     outputn = jnp.array(outputn)
     feature_multiplier, feature_constant, label_multiplier = 100., 30., 1./3.
@@ -56,8 +62,10 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate):
     preamble = main_training_preamble(N, T, dt, omega, alpha, batch_size, random_init_times, inputn, outputn, rng_key, feature_multiplier, feature_constant, label_multiplier, map_features_and_labels)
     neurons = preamble['neurons']
     connections_neuronwise = preamble['connections_neuronwise']
-    weights = preamble['weights']
-    weights_matrix = preamble['weights_matrix']
+    weights_real = preamble['weights_real']
+    weights_real_matrix = preamble['weights_real_matrix']
+    weights_imaginary = preamble['weights_imaginary']
+    weights_imaginary_matrix = preamble['weights_imaginary_matrix']
     weight_update_mask = preamble['weight_update_mask']
     pField = preamble['pField']
     uField = preamble['uField']
@@ -82,7 +90,8 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate):
     for epoch in range(num_of_epochs):
 
         time0 = time.time()
-        weight_gradient = jnp.zeros((N,N))
+        weight_real_gradient = jnp.zeros((N,N))
+        weight_imaginary_gradient = jnp.zeros((N,N))
         bias_gradient = jnp.zeros(N)
         bias_phase_gradient = jnp.zeros(N)
 
@@ -101,7 +110,7 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate):
 
                 uField = uField.at[jnp.array(inputn)].set([feature[0], feature[1]])
 
-                states = solve_ode_free((init_amplitudes, init_phases), times, weights, alpha, omega, pField, uField, connections_neuronwise, input_mask)
+                states = solve_ode_free((init_amplitudes, init_phases), times, weights_real, weights_imaginary, alpha, omega, pField, uField, connections_neuronwise, input_mask)
                 amplitudes = states[0][-1]
                 phases = states[1][-1]
 
@@ -114,7 +123,7 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate):
                         print(f"\tNonstable final state encountered! Restarting from epoch {epoch}")
                         return 1
 
-                gradient_weights_forward, gradient_biases_forward = calculate_energy_gradient(amplitudes, phases)
+                gradient_weights_real_forward, gradient_weights_imaginary_forward, gradient_biases_forward = calculate_energy_gradient(amplitudes, phases)
 
 
                 # appending to training data arrays
@@ -127,29 +136,34 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate):
                     print(f"output vs label: {amplitudes[outputn]} ---- {label}")
                 """
 
-                states = solve_ode_nudged((init_amplitudes, init_phases), times, weights, alpha, omega, pField, uField, connections_neuronwise, input_mask, beta, target)
+                states = solve_ode_nudged((init_amplitudes, init_phases), times, weights_real, weights_imaginary, alpha, omega, pField, uField, connections_neuronwise, input_mask, beta, target)
                 amplitudes = states[0][-1]
                 phases = states[1][-1]
 
-                gradient_weights_backward, gradient_biases_backward = calculate_energy_gradient(amplitudes, phases)
+                gradient_weights_real_backward, gradient_weights_imaginary_backward, gradient_biases_backward = calculate_energy_gradient(amplitudes, phases)
 
 
-                weight_gradient += gradient_weights_backward - gradient_weights_forward
+                weight_real_gradient += gradient_weights_real_backward - gradient_weights_real_forward
+                weight_imaginary_gradient += gradient_weights_imaginary_backward - gradient_weights_imaginary_forward
                 bias_gradient += gradient_biases_backward - gradient_biases_forward
 
             # Parameters are updated once per batch loop
-            weight_gradient *= inv_batch_size*inv_random_init_times*inv_nudge_step
+            weight_real_gradient *= inv_batch_size*inv_random_init_times*inv_nudge_step
+            weight_imaginary_gradient *= inv_batch_size*inv_random_init_times*inv_nudge_step
             bias_gradient *= inv_batch_size*inv_random_init_times*inv_nudge_step
             
-            if False: #np.linalg.norm(weight_gradient,ord=1) > 1* N*N:
+            if True: #np.linalg.norm(weight_gradient,ord=1) > 1* N*N:
                 #print(f"gradient absolute size exceeded expected value\nL(∇W) = {np.linalg.norm(weight_gradient, ord=1)}")
-                print("NORMALIZED!")
-                weight_gradient /= jnp.linalg.norm(weight_gradient,ord=1)
+                #print("NORMALIZED!")
+                weight_real_gradient /= jnp.linalg.norm(weight_real_gradient,ord=1)
+                weight_imaginary_gradient /= jnp.linalg.norm(weight_imaginary_gradient,ord=1)
                 bias_gradient /= jnp.linalg.norm(bias_gradient,ord=1)
 
-            weights_matrix -= learning_rate * weight_gradient * weight_update_mask
-            weights = weights_matrix[connections_neuronwise, jnp.arange(N)[:, None]]
-            uField -= learning_rate * bias_gradient
+            weights_real_matrix -= learning_rate * weight_real_gradient * weight_update_mask * 0.5 # 0.5 comes from hamiltonian formulation
+            weights_real = weights_real_matrix[connections_neuronwise, jnp.arange(N)[:, None]]
+            weights_imaginary_matrix -= learning_rate * weight_imaginary_gradient * weight_update_mask * 0.5
+            weights_imaginary = weights_imaginary_matrix[connections_neuronwise, jnp.arange(N)[:, None]]
+            uField -= learning_rate * bias_gradient * 0.5
 
         distances.append(sum_and_divide_array(distance_temp, batch_size))
         accuracies.append(sum_and_divide_array(accuracies_temp, batch_size))
@@ -174,7 +188,7 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate):
         save_array_to_file(jnp.array(accuracies), name + "_acc.txt")
 
     # plotting
-    elif do_save=="n" or do_save=="no"
+    elif do_save=="n" or do_save=="no":
         fig, axes = plt.subplots(ncols=2, figsize=(12, 6))
         axes[0].plot(distances, label="amplitude", c="r")
         axes[0].set_title("distances")
