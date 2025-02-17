@@ -119,7 +119,7 @@ def sum_and_divide_array(array, divisor):
 def determine_SL_binary_distance(amplitude, label, outputn):
     return jnp.abs(jnp.sum(amplitude[outputn] - label))
 
-def main_SL_training_preamble(N, T, dt, omega, alpha, batch_size, random_init_times, inputn, outputn, rng_key, feature_multiplier, feature_constant, label_multiplier, map_features_and_labels):
+def main_SL_training_preamble(N, T, dt, omega, alpha, batch_size, random_init_times, inputn, outputn, rng_key, feature_multiplier, feature_constant, label_multiplier, weight_type, map_features_and_labels):
     """
     Function returning object of all parameters
     N - integer larger than number of inputs and number of outputs
@@ -138,6 +138,14 @@ def main_SL_training_preamble(N, T, dt, omega, alpha, batch_size, random_init_ti
     beta, inv_nudge_step, inv_batch_size, inv_random_init_times = initialize_simulation_params(
         N, outputn, batch_size, random_init_times
     )
+    if weight_type == 'r':
+        weights_imaginary *= 0
+        weights_imaginary_matrix *= 0
+    elif weight_type == 'i':
+        weights_real *= 0
+        weights_real_matrix *= 0
+    elif weight_type == 'c': 
+        pass
 
     times = jnp.arange(0, T + dt, dt)
     init_amplitudes = jax.random.uniform(rng_key, shape=(N,), minval=-1, maxval=1)/2 + 2

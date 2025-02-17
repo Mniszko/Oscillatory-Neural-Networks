@@ -32,9 +32,9 @@ def XOR_problem_SL_map_features_and_labels(feature_multiplier, feature_constant,
         amplitude_relative = amplitudes[outputn[0]]
 
     features = jnp.array([
-        [-1,-1],
-        [1,-1],
-        [-1,1],
+        [0,0],
+        [1,0],
+        [0,1],
         [1,1]
     ])*feature_multiplier+feature_constant
     labels = jnp.array([[-1],[1],[1],[-1]]) * label_multiplier + amplitude_relative

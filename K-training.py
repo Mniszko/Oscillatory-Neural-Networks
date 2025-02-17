@@ -31,6 +31,7 @@ def main():
     parser.add_argument('letter', type=str, help="A letter (string).")
     parser.add_argument('num_of_epochs', type=int, help="Number of epochs.")
     parser.add_argument('learning_rate', type=float, help="Learning rate.")
+    parser.add_argument('normalize', type=bool, help="Normalize gradients during gradient descent according to internal rules: 0 or 1 (false or true)")
 
     # Parse the arguments
     args = parser.parse_args()
@@ -40,6 +41,7 @@ def main():
     do_save = args.letter
     num_of_epochs = args.num_of_epochs
     learning_rate = args.learning_rate
+    normalize = args.normalize
     rng_key = jax.random.PRNGKey(round(time.time()*1e7))
     
     if N<3:
@@ -131,7 +133,7 @@ def main():
             bias_phase_gradient *= inv_nudge_step * inv_batch_size * inv_random_init_times
 
             # normalization (required for first few steps)
-            if False:
+            if normalize:
                 #print(f"gradient absolute size exceeded expected value\nL(∇W) = {np.linalg.norm(weight_gradient, ord=2)}")
                 weight_gradient /= jnp.linalg.norm(weight_gradient,ord=2)
                 bias_gradient /= jnp.linalg.norm(bias_gradient,ord=2)

@@ -1,7 +1,7 @@
 from .KuramotoNeuralNetwork import run_function_pulsed, solve_K_ode_free, solve_K_ode_nudged, compute_kuramoto_gradients, determine_K_binary_distance, main_K_training_preamble
 # solve forward and solve backward should be named differently, though not the same as SL functions
 
-from .basics import read_and_plot, clear_csv, save_array_to_file, append_to_csv, save_parameters, load_parameters
+from .basics import read_and_plot, clear_csv, save_array_to_file, append_to_csv, save_parameters, load_parameters, record_states, write_separator
 
 from .StuartLandauNeuralNet import solve_SL_ode_free, solve_SL_ode_nudged, sum_and_divide_array, main_SL_training_preamble, shuffle_and_batch, determine_SL_binary_distance
 

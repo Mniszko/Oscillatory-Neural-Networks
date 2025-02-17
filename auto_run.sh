@@ -12,11 +12,11 @@ echo before running remember to set methods in main files to those corresponding
 
 for i in $(seq 1 $NUM_ITERATIONS); do
     echo "      Running simulation number $i"
-    python3 SL-training.py SL-output $NUM_NEURONS y $NUM_EPOCHS $SL_LEARNING_RATE
+    python3 SL-training.py exp01-12-02-2025 $NUM_NEURONS y $NUM_EPOCHS $SL_LEARNING_RATE r 0 100 30 0.3
 done
 
 for i in $(seq 1 $NUM_ITERATIONS); do
     echo "      Running simulation number $i"
-    python3 K-training.py K-output $NUM_NEURONS y $NUM_EPOCHS $K_LEARNING_RATE
+    python3 K-training.py K-output $NUM_NEURONS y $NUM_EPOCHS $K_LEARNING_RATE 0
 done
 

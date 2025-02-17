@@ -1,7 +1,6 @@
 # import numpy as np
 # from scipy.integrate import odeint
 import numpy as np
-import jax as jx
 import jax.numpy as jnp
 from jax.experimental.ode import odeint
 import csv
@@ -156,3 +155,50 @@ def calculate_energy_gradient(state, gradientWeights, N, gradientBiases = False)
         for i in range(1,N):
             gradientBiases[i] = -densities[i]*densities[i]
     return gradientWeights, gradientBiases
+
+def record_states(name, amplitudes, phases):
+    """
+    Records amplitudes and phases as new lines in files.
+
+    Parameters:
+    - name (str): Base name for the output files.
+    - amplitudes (jnp.ndarray): Array of amplitudes to be recorded.
+    - phases (jnp.ndarray): Array of phases to be recorded.
+    """
+    # Define filenames
+    amp_filename = f"{name}_amp.txt"
+    pha_filename = f"{name}_pha.txt"
+
+    # Convert JAX arrays to numpy arrays if necessary
+    if isinstance(amplitudes, jnp.ndarray):
+        amplitudes = amplitudes.tolist()
+    if isinstance(phases, jnp.ndarray):
+        phases = phases.tolist()
+
+    # Write amplitudes to file
+    with open(amp_filename, 'a') as amp_file:
+        amp_file.write(','.join(map(str, amplitudes)) + '\n')
+
+    # Write phases to file
+    with open(pha_filename, 'a') as pha_file:
+        pha_file.write(','.join(map(str, phases)) + '\n')
+
+def write_separator(name, separator="-" * 40):
+    """
+    Writes a separator line into the amplitude and phase files.
+
+    Parameters:
+    - name (str): Base name for the output files.
+    - separator (str): The separator string to write (default is a line of dashes).
+    """
+    # Define filenames
+    amp_filename = f"{name}_amp.txt"
+    pha_filename = f"{name}_pha.txt"
+
+    # Write separator to amplitudes file
+    with open(amp_filename, 'a') as amp_file:
+        amp_file.write(separator + '\n')
+
+    # Write separator to phases file
+    with open(pha_filename, 'a') as pha_file:
+        pha_file.write(separator + '\n')
