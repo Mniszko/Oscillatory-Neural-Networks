@@ -24,7 +24,7 @@ map_features_and_labels = double_XOR_SL_map_features_and_labels
 def training_function(name, N, do_save, num_of_epochs, learning_rate, weight_type, normalize, feature_multiplier, feature_constant, label_multiplier):
     #compiled here because it needs static N
     @jax.jit
-    def calculate_energy_gradient(amplitudes, phases, weight_type):
+    def calculate_energy_gradient(amplitudes, phases):
         # Allocate gradient_weights and gradient_biases
         if weight_type == 'r':
             gradient_weights_real = jnp.zeros((N, N))
@@ -104,7 +104,11 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate, weight_typ
     distances = []
     accuracies = []
 
+    if jnp.isnan(amplitude_relative):
+        print('Amplitude relative equal to nan found. Restarting.')
+        return 1
     print(f"\tAmplitude relative: \t{amplitude_relative}")
+    
 
     # training the network
     for epoch in range(num_of_epochs):

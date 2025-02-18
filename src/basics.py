@@ -176,8 +176,9 @@ def record_states(name, amplitudes, phases):
         phases = phases.tolist()
 
     # Write amplitudes to file
-    with open(amp_filename, 'a') as amp_file:
-        amp_file.write(','.join(map(str, amplitudes)) + '\n')
+    if amplitudes != False:
+        with open(amp_filename, 'a') as amp_file:
+            amp_file.write(','.join(map(str, amplitudes)) + '\n')
 
     # Write phases to file
     with open(pha_filename, 'a') as pha_file:

@@ -3,7 +3,7 @@ import jax.numpy as jnp
 import matplotlib.pyplot as plt
 import argparse
 import time
-from src import solve_K_ode_free, solve_K_ode_nudged, sum_and_divide_array, compute_kuramoto_gradients as compute_gradients, create_kuramoto_symmetric_weights as create_symmetric_weights, XOR_problem_K_map_features_and_labels,  XOR_problem_K_determine_accuracy, double_XOR_K_map_features_and_labels, double_XOR_K_determine_accuracy, determine_K_binary_distance, main_K_training_preamble as main_training_preamble, shuffle_and_batch
+from src import solve_K_ode_free, solve_K_ode_nudged, sum_and_divide_array, compute_kuramoto_gradients as compute_gradients, create_kuramoto_symmetric_weights as create_symmetric_weights, XOR_problem_K_map_features_and_labels,  XOR_problem_K_determine_accuracy, double_XOR_K_map_features_and_labels, double_XOR_K_determine_accuracy, determine_K_binary_distance, main_K_training_preamble as main_training_preamble, shuffle_and_batch, save_array_to_file, record_states, write_separator
 
 jax.config.update("jax_enable_x64", True)
 
@@ -112,6 +112,8 @@ def main():
                 gradient_weights_forward, gradient_biases_forward, gradient_bias_phases_forward = compute_gradients(
                     phases, weights, biases, bias_phases
                 )
+                if do_save=="y" or do_save=="yes":
+                    record_states(name, False, phases) #records stable states across each batch
                 distance_temp.append(determine_distance(phases, outputn, label))
                 accuracies_temp.append(determine_accuracy(phases, label, outputn))
 
@@ -163,6 +165,7 @@ def main():
         """
         
     if do_save=="y" or do_save=="yes":
+        write_separator(name)
         save_array_to_file(jnp.array(distances), name + ".txt")
         save_array_to_file(jnp.array(accuracies), name + "_acc.txt")
 
