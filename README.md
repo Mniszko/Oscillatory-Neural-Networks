@@ -25,8 +25,13 @@ There is currently no requirements file, though as for January 2025 code (except
 <strong>src</strong> directory contains module with methods separated into individual files. basics.py stores basic functionalities, DoubleXORProblem.py XORProblem.py have methods for initializing datasets (number of these files is subject to change), InitializationModule has methods for initializing simulation parameters (compiled in NeuralNetwork files), StuartLandauNeuralNet.py and KuramotoNeuralNetwork.py contain dynamics, full parameter initialization and such.
 </p>
 
+<strong>run_parallel.sh</strong> is a example script simmilar to auto_run making use of parallel computations using many core CPUs
+
+<strong>plot_all.py</strong> plots distance, accuracy, stable phase and amplitude states from given data files. It plots only case of given index in such files.
+
 <h2>ADDITIONAL INFORMATIONS</h2>
 
 <p>
 1. training parameters are updated according to equation from our notes, though before running next set of simulations I should add update matrices and vectors normalization according to some arbitrary rules, at least in cases where gradient descent produces values too small to make change or approaching infinity.
 </p>
+
