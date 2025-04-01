@@ -184,6 +184,25 @@ def record_states(name, amplitudes, phases):
     with open(pha_filename, 'a') as pha_file:
         pha_file.write(','.join(map(str, phases)) + '\n')
 
+def record_all_states(name, all_amplitudes, all_phases):
+    """
+    Records all stored amplitudes and phases to files.
+
+    Parameters:
+    - name (str): Base name for the output files.
+    """
+    if all_amplitudes == False:
+        for i, phases in enumerate(all_phases):
+            record_states(name, [], phases)
+    elif all_phases == False:
+        for i, amplitudes in enumerate(all_amplitudes):
+            record_states(name, amplitudes, [])
+    # Call the original record_states function for each stored state
+    else:
+        for i, (amplitudes, phases) in enumerate(zip(all_amplitudes, all_phases)):
+            record_states(name, amplitudes, phases)
+    write_separator(name) # writes separator
+
 def write_separator(name, separator="-" * 40):
     """
     Writes a separator line into the amplitude and phase files.

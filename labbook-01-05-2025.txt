@@ -1,0 +1,9 @@
+01-04-2025
+simulations with preamble identical to 26-03-2025
+
+
+name        maximum u_n     num_neurons
+exp01       120             12
+exp02       150             12
+exp03       120             7
+exp04       150             7

@@ -4,7 +4,7 @@ from jax import jit
 import matplotlib.pyplot as plt
 import argparse
 import time
-from src import save_array_to_file, solve_SL_ode_free, solve_SL_ode_nudged, sum_and_divide_array, determine_SL_binary_distance, main_SL_training_preamble as main_training_preamble, XOR_problem_SL_determine_accuracy, XOR_problem_SL_map_features_and_labels, shuffle_and_batch, double_XOR_SL_map_features_and_labels, double_XOR_SL_determine_accuracy, record_states, write_separator
+from src import save_array_to_file, solve_SL_ode_free, solve_SL_ode_nudged, sum_and_divide_array, determine_SL_binary_distance, main_SL_training_preamble as main_training_preamble, XOR_problem_SL_determine_accuracy, XOR_problem_SL_map_features_and_labels, shuffle_and_batch, double_XOR_SL_map_features_and_labels, double_XOR_SL_determine_accuracy, record_all_states, write_separator
 
 jax.config.update("jax_enable_x64", True)
 
@@ -21,7 +21,7 @@ determine_accuracy = double_XOR_SL_determine_accuracy
 map_features_and_labels = double_XOR_SL_map_features_and_labels
 """
 
-def training_function(name, N, do_save, num_of_epochs, learning_rate, weight_type, normalize, feature_multiplier, feature_constant, label_multiplier):
+def training_function(name, N, do_save, num_of_epochs, learning_rate, weight_type, normalize, feature_multiplier, feature_constant, label_multiplier, weight_option, high_value, beta_val):
     #compiled here because it needs static N
     @jax.jit
     def calculate_energy_gradient(amplitudes, phases):
@@ -79,17 +79,24 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate, weight_typ
     inputn = jnp.array(inputn)
     outputn = jnp.array(outputn)
 
-    preamble = main_training_preamble(N, T, dt, omega, alpha, batch_size, random_init_times, inputn, outputn, rng_key, feature_multiplier, feature_constant, label_multiplier, weight_type, map_features_and_labels)
+    preamble = main_training_preamble(N, T, dt, omega, alpha, batch_size, random_init_times, inputn, outputn, rng_key, feature_multiplier, feature_constant, label_multiplier, weight_type, map_features_and_labels, weight_option)
     neurons = preamble['neurons']
     connections_neuronwise = preamble['connections_neuronwise']
     weights_real = preamble['weights_real']
     weights_real_matrix = preamble['weights_real_matrix']
     weights_imaginary = preamble['weights_imaginary']
     weights_imaginary_matrix = preamble['weights_imaginary_matrix']
-    weight_update_mask = preamble['weight_update_mask']
+    
+    weight_update_mask = jnp.ones((N, N)) * (1 - jnp.eye(N))
+
     pField = preamble['pField']
-    uField = preamble['uField']
-    beta = preamble['beta']
+
+    #uField = preamble['uField']
+    uField = jax.random.uniform(rng_key, shape=(N,), minval=-high_value, maxval=high_value) 
+    #beta = preamble['beta']
+    beta = jnp.zeros(N).at[outputn].set(beta_val)
+    inv_nudge_step = 1 / beta[outputn[0]]
+
     inv_nudge_step = preamble['inv_nudge_step']
     inv_batch_size = preamble['inv_batch_size']
     inv_random_init_times = preamble['inv_random_init_times']
@@ -111,6 +118,8 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate, weight_typ
     
 
     # training the network
+    all_amplitudes = []
+    all_phases = []
     for epoch in range(num_of_epochs):
 
         time0 = time.time()
@@ -137,9 +146,8 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate, weight_typ
                 states = solve_ode_free((init_amplitudes, init_phases), times, weights_real, weights_imaginary, alpha, omega, pField, uField, connections_neuronwise, input_mask)
                 amplitudes = states[0][-1]
                 phases = states[1][-1]
-                if do_save=="y" or do_save=="yes":
-                    record_states(name, amplitudes, phases) #records stable states across each batch
-
+                all_amplitudes.append(amplitudes)
+                all_phases.append(phases)
                 # removes nonstable solutions by restarting the thing
                 if any(x > 1e-5 for x in (states[0][-10] - states[0][-1])):
                     if not T==400:
@@ -190,13 +198,13 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate, weight_typ
                 #print(f"gradient absolute size exceeded expected value\nL(∇W) = {np.linalg.norm(weight_gradient, ord=1)}")
                 #print("NORMALIZED!")
                 if weight_type == 'r':
-                    weight_real_gradient /= jnp.linalg.norm(weight_real_gradient,ord=1)
+                    weight_real_gradient /= jnp.linalg.norm(weight_real_gradient,ord=2)
                 elif weight_type == 'i':
-                    weight_imaginary_gradient /= jnp.linalg.norm(weight_imaginary_gradient,ord=1)
+                    weight_imaginary_gradient /= jnp.linalg.norm(weight_imaginary_gradient,ord=2)
                 elif weight_type == 'c':
-                    weight_real_gradient /= jnp.linalg.norm(weight_real_gradient,ord=1)
-                    weight_imaginary_gradient /= jnp.linalg.norm(weight_imaginary_gradient,ord=1)
-                bias_gradient /= jnp.linalg.norm(bias_gradient,ord=1)
+                    weight_real_gradient /= jnp.linalg.norm(weight_real_gradient,ord=2)
+                    weight_imaginary_gradient /= jnp.linalg.norm(weight_imaginary_gradient,ord=2)
+                bias_gradient /= jnp.linalg.norm(bias_gradient,ord=2)
 
             if weight_type == 'r':
                 weights_real_matrix -= learning_rate * weight_real_gradient * weight_update_mask * 0.5 # 0.5 comes from hamiltonian formulation
@@ -229,7 +237,7 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate, weight_typ
             print(f"time taken for the epoch: {time1-time0}")
         """
     if do_save=="y" or do_save=="yes":
-        write_separator(name) # writes separator in stable state recordings
+        record_all_states(name, all_amplitudes, all_phases) #rerator in stable state recordings
         save_array_to_file(jnp.array(distances), name + ".txt")
         save_array_to_file(jnp.array(accuracies), name + "_acc.txt")
 
@@ -261,11 +269,18 @@ def main():
     parser.add_argument('feature_multiplier', type=float, help="feature multiplier value")
     parser.add_argument('feature_constant', type=float, help="feature constant value")
     parser.add_argument('label_multiplier', type=float, help="label multiplier value")
+    parser.add_argument('high_value', type=float, help="high value for u-field randomization")
+    parser.add_argument('beta_val', type=float, help="value of beta parameter")
     args = parser.parse_args()
 
+    weight_option = {
+        'diagonal':'nonzero',
+        'eigenvalues':'all_positive',
+        'nondiagonal':'rand'
+    }
 
     while True:
-        answer = training_function(args.name, args.number, args.letter, args.num_of_epochs, args.learning_rate, args.weight_type, args.normalize, args.feature_multiplier, args.feature_constant, args.label_multiplier)
+        answer = training_function(args.name, args.number, args.letter, args.num_of_epochs, args.learning_rate, args.weight_type, args.normalize, args.feature_multiplier, args.feature_constant, args.label_multiplier, weight_option, args.high_value, args.beta_val)
         if answer == 0:
             break
 
