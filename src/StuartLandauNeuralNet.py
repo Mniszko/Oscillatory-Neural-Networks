@@ -119,7 +119,7 @@ def sum_and_divide_array(array, divisor):
 def determine_SL_binary_distance(amplitude, label, outputn):
     return jnp.abs(jnp.sum(amplitude[outputn] - label))
 
-def main_SL_training_preamble(N, T, dt, omega, alpha, batch_size, random_init_times, inputn, outputn, rng_key, feature_multiplier, feature_constant, label_multiplier, weight_type, map_features_and_labels, weight_option):
+def main_SL_training_preamble(N, T, dt, omega, alpha, batch_size, random_init_times, inputn, outputn, rng_key, feature_multiplier, feature_constant, label_multiplier, weight_type, map_features_and_labels, weight_option, beta_val, min_value, high_value):
     """
     Function returning object of all parameters
     N - integer larger than number of inputs and number of outputs
@@ -134,9 +134,9 @@ def main_SL_training_preamble(N, T, dt, omega, alpha, batch_size, random_init_ti
     map_features_and_labels - function mapping features and labels for a given problem to amplitudes
     """
     neurons, connections_neuronwise = initialize_neurons(N, inputn)
-    weights_real, weights_real_matrix, weights_imaginary, weights_imaginary_matrix, weight_update_mask, pField, uField = initialize_weights_and_SL_fields(N, inputn, connections_neuronwise, rng_key, weight_option)
+    weights_real, weights_real_matrix, weights_imaginary, weights_imaginary_matrix, weight_update_mask, pField, uField = initialize_weights_and_SL_fields(N, inputn, connections_neuronwise, rng_key, weight_option, min_value, high_value)
     beta, inv_nudge_step, inv_batch_size, inv_random_init_times = initialize_simulation_params(
-        N, outputn, batch_size, random_init_times
+        N, outputn, batch_size, random_init_times, beta_val
     )
     if weight_type == 'r':
         weights_imaginary *= 0
@@ -148,8 +148,8 @@ def main_SL_training_preamble(N, T, dt, omega, alpha, batch_size, random_init_ti
         pass
 
     times = jnp.arange(0, T + dt, dt)
-    init_amplitudes = jax.random.uniform(rng_key, shape=(N,), minval=-1, maxval=1)/2 + 2
-    init_phases = jax.random.uniform(rng_key, shape=(N,), minval=-jnp.pi, maxval=jnp.pi)/200
+    init_amplitudes = jax.random.uniform(rng_key, shape=(N,), minval=1.5, maxval=2.5)
+    init_phases = jax.random.uniform(rng_key, shape=(N,), minval=-jnp.pi, maxval=jnp.pi)
 
     # input mask for choosing naurons that do not evolve (here unused)
     input_mask = jnp.ones(N)

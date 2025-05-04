@@ -35,26 +35,26 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate, weight_typ
         if weight_type == 'c':
             gradient_weights_real = jnp.zeros((N, N))
             gradient_weights_imaginary = jnp.zeros((N, N))
-        gradient_biases = amplitudes * jnp.cos(phases)
+        gradient_biases = -2 * amplitudes * jnp.cos(phases)
 
         # Vectorized calculation of gradient_weights
         i_indices, j_indices = jnp.triu_indices(N, k=1)
 
         if weight_type == 'r':
-            values_real = -amplitudes[i_indices] * amplitudes[j_indices] * jnp.cos(phases[i_indices] - phases[j_indices])
+            values_real = -amplitudes[i_indices] * amplitudes[j_indices] * jnp.cos(phases[i_indices] - phases[j_indices])/2
             gradient_weights_real = gradient_weights_real.at[i_indices, j_indices].set(values_real)
-            gradient_weights_real = gradient_weights_real.at[j_indices, i_indices].set(values_real)  # Symmetric assignment
+            gradient_weights_real = gradient_weights_real.at[j_indices, i_indices].set(values_real)/2  # Symmetric assignment
 
         if weight_type == 'i':
-            values_imaginary = amplitudes[i_indices] * amplitudes[j_indices] * jnp.sin(phases[i_indices] - phases[j_indices])
+            values_imaginary = amplitudes[i_indices] * amplitudes[j_indices] * jnp.sin(phases[i_indices] - phases[j_indices])/2
             gradient_weights_imaginary = gradient_weights_imaginary.at[i_indices, j_indices].set(values_imaginary)
             gradient_weights_imaginary = gradient_weights_imaginary.at[j_indices, i_indices].set(values_imaginary)  # Symmetric assignment
 
         if weight_type == 'c':
-            values_real = -amplitudes[i_indices] * amplitudes[j_indices] * jnp.cos(phases[i_indices] - phases[j_indices])
+            values_real = -amplitudes[i_indices] * amplitudes[j_indices] * jnp.cos(phases[i_indices] - phases[j_indices])/2
             gradient_weights_real = gradient_weights_real.at[i_indices, j_indices].set(values_real)
             gradient_weights_real = gradient_weights_real.at[j_indices, i_indices].set(values_real)  # Symmetric assignment
-            values_imaginary = amplitudes[i_indices] * amplitudes[j_indices] * jnp.sin(phases[i_indices] - phases[j_indices])
+            values_imaginary = amplitudes[i_indices] * amplitudes[j_indices] * jnp.sin(phases[i_indices] - phases[j_indices])/2
             gradient_weights_imaginary = gradient_weights_imaginary.at[i_indices, j_indices].set(values_imaginary)
             gradient_weights_imaginary = gradient_weights_imaginary.at[j_indices, i_indices].set(values_imaginary)  # Symmetric assignment
 
@@ -79,24 +79,18 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate, weight_typ
     inputn = jnp.array(inputn)
     outputn = jnp.array(outputn)
 
-    preamble = main_training_preamble(N, T, dt, omega, alpha, batch_size, random_init_times, inputn, outputn, rng_key, feature_multiplier, feature_constant, label_multiplier, weight_type, map_features_and_labels, weight_option)
+    preamble = main_training_preamble(N, T, dt, omega, alpha, batch_size, random_init_times, inputn, outputn, rng_key, feature_multiplier, feature_constant, label_multiplier, weight_type, map_features_and_labels, weight_option, beta_val, -high_value, high_value)
     neurons = preamble['neurons']
     connections_neuronwise = preamble['connections_neuronwise']
     weights_real = preamble['weights_real']
     weights_real_matrix = preamble['weights_real_matrix']
     weights_imaginary = preamble['weights_imaginary']
     weights_imaginary_matrix = preamble['weights_imaginary_matrix']
-    
     weight_update_mask = jnp.ones((N, N)) * (1 - jnp.eye(N))
-
     pField = preamble['pField']
-
-    #uField = preamble['uField']
-    uField = jax.random.uniform(rng_key, shape=(N,), minval=-high_value, maxval=high_value) 
-    #beta = preamble['beta']
-    beta = jnp.zeros(N).at[outputn].set(beta_val)
+    uField = preamble['uField']
+    beta = preamble['beta']
     inv_nudge_step = 1 / beta[outputn[0]]
-
     inv_nudge_step = preamble['inv_nudge_step']
     inv_batch_size = preamble['inv_batch_size']
     inv_random_init_times = preamble['inv_random_init_times']
@@ -131,7 +125,7 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate, weight_typ
         distance_temp = []
         accuracies_temp = []
 
-        if (epoch+1)%10 == 0 or epoch==0:
+        if (epoch+1)%100 == 0 or epoch==0:
             print(f"epoch number {epoch+1}")
         
         batches = shuffle_and_batch(features, labels, batch_size, rng_key)
@@ -153,7 +147,7 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate, weight_typ
                     if not T==400:
                         T=400 # first we try to make simulation time longer, if that doesn't work the parameters are discarted
                     else:
-                        print(f"\tNonstable final state encountered! Restarting from epoch {epoch}")
+                        print(f"\tNonstable final state encountered! Restarting at epoch {epoch}")
                         return 1
 
                 gradient_weights_real_forward, gradient_weights_imaginary_forward, gradient_biases_forward = calculate_energy_gradient(amplitudes, phases)
@@ -162,6 +156,10 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate, weight_typ
                 # appending to training data arrays
                 distance_temp.append(determine_distance(amplitudes, label, outputn))
                 accuracies_temp.append(determine_accuracy(amplitudes, label, outputn, amplitude_relative))
+
+                if jnp.isnan(distance_temp[-1]):
+                    print(f'distance found to be equal NaN, restarting at epoch {epoch}')
+                    return 1
 
                 """
                 # debugging

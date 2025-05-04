@@ -32,6 +32,5 @@ There is currently no requirements file, though as for January 2025 code (except
 <h2>ADDITIONAL INFORMATIONS</h2>
 
 <p>
-1. training parameters are updated according to equation from our notes, though before running next set of simulations I should add update matrices and vectors normalization according to some arbitrary rules, at least in cases where gradient descent produces values too small to make change or approaching infinity.
 </p>
 

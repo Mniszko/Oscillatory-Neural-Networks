@@ -119,7 +119,7 @@ def initialize_neurons(N, inputn):
     ])
     return neurons, connections_neuronwise
 # Function to initialize weights and fields
-def initialize_weights_and_SL_fields(N, inputn, connections_neuronwise, rng_key, weight_option):
+def initialize_weights_and_SL_fields(N, inputn, connections_neuronwise, rng_key, weight_option, min_value, high_value):
     weights_real_matrix = create_symmetric_weights(N, 0., 1., inputn, rng_key, options=weight_option)
     weights_imaginary_matrix = create_symmetric_weights(N, 0., 1., inputn, rng_key, options=weight_option)
     weight_update_mask = create_weight_update_mask(N, inputn)
@@ -127,8 +127,7 @@ def initialize_weights_and_SL_fields(N, inputn, connections_neuronwise, rng_key,
     weights_imaginary = weights_imaginary_matrix[connections_neuronwise, jnp.arange(N)[:, None]]
 
     pField = jnp.zeros(N)
-    alternating_array = jnp.array([(-1) ** i for i in range(N)])
-    uField = jax.random.uniform(rng_key, shape=(N,), minval=20, maxval=40) * alternating_array
+    uField = jax.random.uniform(rng_key, shape=(N,), minval=min_value, maxval=high_value) 
 
     return weights_real, weights_real_matrix, weights_imaginary, weights_imaginary_matrix, weight_update_mask, pField, uField
 
@@ -143,7 +142,7 @@ def initialize_weights_and_K_fields(N, inputn, connections_neuronwise, rng_key):
     return weights, weights_matrix, weight_update_mask, biases, bias_phases
 
 # Function to initialize simulation parameters
-def initialize_simulation_params(N, outputn, batch_size, random_init_times, beta_value=1e-4):
+def initialize_simulation_params(N, outputn, batch_size, random_init_times, beta_value):
     beta = jnp.zeros(N).at[outputn].set(beta_value)
     inv_nudge_step = 1 / beta[outputn[0]]
     inv_batch_size = 1 / batch_size
