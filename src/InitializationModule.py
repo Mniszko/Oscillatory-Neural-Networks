@@ -151,6 +151,6 @@ def initialize_simulation_params(N, outputn, batch_size, random_init_times, beta
 
 # Function to map features and labels
 def initialize_SL_states_and_features(feature_multiplier, feature_constant, label_multiplier, init_amplitudes, init_phases, uField, inputn, outputn, map_features_and_labels):
-    amplitude_relative, features, labels = map_features_and_labels(feature_multiplier, feature_constant, label_multiplier, init_amplitudes, outputn)
+    amplitude_relative, features, labels_amplitude, labels_phase = map_features_and_labels(feature_multiplier, feature_constant, label_multiplier, init_amplitudes, outputn)
     uField = uField.at[jnp.array(inputn)].set([features[0][0], features[1][1]])
-    return amplitude_relative, features, labels
+    return amplitude_relative, features, labels_amplitude, labels_phase

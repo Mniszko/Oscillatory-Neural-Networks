@@ -2,6 +2,10 @@
 
 <p>
 Repository contains package with methods written in python with JAX for training <a href="https://www.semanticscholar.org/paper/Training-Coupled-Phase-Oscillators-as-a-Platform-Wang-Wanjura/55e70b62b96f5bac8d91b233b55c157925d5c618">oscillatory neural networks (ONNs) with equilibrium propagation (EP)</a> and code utilizing these methods for two separate models of oscillations, namely Kuramoto (K) model (or two different K models) and Stuart-Landau (SL) model.
+
+Version in this branch utilizes mixed-loss function, one of three predefined, according to instructions parsed at main script call.
+
+Changes done to main branch include also recording one-hot accuracy as minimum loss chosen between values {0,1}, not above/below threshold - which has the same meaning but in simplified case.
 </p>
 
 <h2>PREREQUISITES</h2>

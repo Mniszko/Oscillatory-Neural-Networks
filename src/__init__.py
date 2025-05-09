@@ -3,7 +3,7 @@ from .KuramotoNeuralNetwork import run_function_pulsed, solve_K_ode_free, solve_
 
 from .basics import read_and_plot, clear_csv, save_array_to_file, append_to_csv, save_parameters, load_parameters, record_all_states, record_states, write_separator
 
-from .StuartLandauNeuralNet import solve_SL_ode_free, solve_SL_ode_nudged, sum_and_divide_array, main_SL_training_preamble, shuffle_and_batch, determine_SL_binary_distance
+from .StuartLandauNeuralNet import solve_SL_ode_free, solve_SL_ode_nudged_amplitude, solve_SL_ode_nudged_phase, solve_SL_ode_nudged_tar_per_amp, solve_SL_ode_nudged_tar_times_amp, solve_SL_ode_nudged_amp_squared, sum_and_divide_array, main_SL_training_preamble, shuffle_and_batch, determine_SL_binary_distance
 
 from .WeightsModule import create_random_connections, create_square_lattice_connections, create_weight_update_mask, create_kuramoto_symmetric_weights
 

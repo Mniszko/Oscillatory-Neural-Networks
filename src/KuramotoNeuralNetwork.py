@@ -43,7 +43,7 @@ def run_function_pulsed(function, arguments, phases, feature, time_array, slice_
     return np.vstack(solution_full), np.array(solution[-1][-1])
 
 @jax.jit
-# THIS IS NOT KURAMOTO MODEL! THIS IS SIMPLIFIED AMPLITUDE ONLY STUART LANDAU! FOR CORRECT KURAMOTO GO TO GIT REPOSITORY
+# IF THIS MODEL DOESN'T WORK PLEASE TRY THE ONE IN MAIN GITHUB BRANCH (AS OF FEB 2025)
 def kuramoto_oscillators(theta, t, K, h, psi, coupled_theta, input_mask):
     """
     Computes the derivative of theta for the Kuramoto oscillators (JAX version).
@@ -60,14 +60,17 @@ def kuramoto_oscillators(theta, t, K, h, psi, coupled_theta, input_mask):
     # Extract the coupled values
     coupled_values = theta[coupled_theta]
 
-    dtheta_dt = -theta**3
-    dtheta_dt += jnp.sum(K*coupled_values)
-    dtheta_dt += 2*theta
-    dtheta_dt += h 
+    # Compute the sin(theta_i - coupled_theta)
+    sin_diffs = jnp.sin(theta[:, None] - coupled_values)  # Vectorized difference
+    sin_external = jnp.sin(theta - psi)
 
-    return dtheta_dt
+    # Compute dtheta_dt using vectorized operations
+    dtheta_dt = -jnp.sum(sin_diffs * K, axis=1) - h * sin_external 
+
+    return dtheta_dt * input_mask
 
 @jax.jit
+# IF THIS MODEL DOESN'T WORK PLEASE TRY THE ONE IN MAIN GITHUB BRANCH (AS OF FEB 2025)
 def kuramoto_oscillators_nudge(theta, t, K, h, psi, coupled_theta, input_mask, beta, target):
     """
     Computes the derivative of theta for the Kuramoto oscillators with a nudge term (JAX version).
@@ -86,16 +89,21 @@ def kuramoto_oscillators_nudge(theta, t, K, h, psi, coupled_theta, input_mask, b
     # Extract the coupled values
     coupled_values = theta[coupled_theta]
 
-    dtheta_dt = -theta**3
-    dtheta_dt += jnp.sum(K*coupled_values)
-    dtheta_dt += 2*theta
-    dtheta_dt += h 
+    # Compute the sin(theta_i - coupled_theta) differences
+    sin_diffs = jnp.sin(theta[:, None] - coupled_values)  # Vectorized difference
+    sin_external = jnp.sin(theta - psi)
 
     # Nudge term
-    dtheta_dt += beta * (target-theta)
+    nudge_term = beta * jnp.sin(theta - target) / (jnp.cos(theta - target) + 1 + 1e-8)
 
+    # Compute dtheta_dt using vectorized operations
+    dtheta_dt = -(
+        jnp.sum(sin_diffs * K, axis=1)
+        + h * sin_external
+        + nudge_term
+    ) 
 
-    return dtheta_dt
+    return dtheta_dt * input_mask
     
 @jax.jit
 def solve_K_ode_free(phases, times, weights, biases, bias_phases, connections_neuronwise, input_mask):

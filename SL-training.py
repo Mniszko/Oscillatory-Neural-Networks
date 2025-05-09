@@ -4,14 +4,13 @@ from jax import jit
 import matplotlib.pyplot as plt
 import argparse
 import time
-from src import save_array_to_file, solve_SL_ode_free, solve_SL_ode_nudged, sum_and_divide_array, determine_SL_binary_distance, main_SL_training_preamble as main_training_preamble, XOR_problem_SL_determine_accuracy, XOR_problem_SL_map_features_and_labels, shuffle_and_batch, double_XOR_SL_map_features_and_labels, double_XOR_SL_determine_accuracy, record_all_states, write_separator
+from src import save_array_to_file, solve_SL_ode_free, solve_SL_ode_nudged_amplitude, solve_SL_ode_nudged_phase, solve_SL_ode_nudged_tar_per_amp,  solve_SL_ode_nudged_tar_times_amp, solve_SL_ode_nudged_amp_squared, sum_and_divide_array, determine_SL_binary_distance, main_SL_training_preamble as main_training_preamble, XOR_problem_SL_determine_accuracy, XOR_problem_SL_map_features_and_labels, shuffle_and_batch, double_XOR_SL_map_features_and_labels, double_XOR_SL_determine_accuracy, record_all_states, write_separator
 
 jax.config.update("jax_enable_x64", True)
 
 determine_distance = determine_SL_binary_distance
 
 solve_ode_free = solve_SL_ode_free
-solve_ode_nudged = solve_SL_ode_nudged
 
 determine_accuracy = XOR_problem_SL_determine_accuracy
 map_features_and_labels = XOR_problem_SL_map_features_and_labels
@@ -21,7 +20,7 @@ determine_accuracy = double_XOR_SL_determine_accuracy
 map_features_and_labels = double_XOR_SL_map_features_and_labels
 """
 
-def training_function(name, N, do_save, num_of_epochs, learning_rate, weight_type, normalize, feature_multiplier, feature_constant, label_multiplier, weight_option, high_value, beta_val):
+def training_function(name, N, do_save, num_of_epochs, learning_rate, weight_type, normalize, feature_multiplier, feature_constant, label_multiplier, weight_option, high_value, beta_val, cost_mix_type):
     #compiled here because it needs static N
     @jax.jit
     def calculate_energy_gradient(amplitudes, phases):
@@ -79,6 +78,20 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate, weight_typ
     inputn = jnp.array(inputn)
     outputn = jnp.array(outputn)
 
+    # defining nudge type, or in other words a type of cost function used with parsed parameter
+    if cost_mix_type == "times" or cost_mix_type == "t":
+        solve_ode_nudged = solve_SL_ode_nudged_tar_times_amp
+    elif cost_mix_type == "per" or cost_mix_type == "p":
+        solve_ode_nudged = solve_SL_ode_nudged_tar_per_amp
+    elif cost_mix_type == "squared" or cost_mix_type == "s":
+        solve_ode_nudged = solve_SL_ode_nudged_amp_squared
+    elif cost_mix_type == "amplitude" or cost_mix_type == "am":
+        solve_ode_nudged = solve_SL_ode_nudged_amplitude
+    elif cost_mix_type == "phase" or cost_mix_type == "ph":
+        solve_ode_nudged = solve_SL_ode_nudged_phase
+    else:
+        print("Wrong argument parsed as cost_mix_type!")
+
     preamble = main_training_preamble(N, T, dt, omega, alpha, batch_size, random_init_times, inputn, outputn, rng_key, feature_multiplier, feature_constant, label_multiplier, weight_type, map_features_and_labels, weight_option, beta_val, -high_value, high_value)
     neurons = preamble['neurons']
     connections_neuronwise = preamble['connections_neuronwise']
@@ -100,7 +113,8 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate, weight_typ
     input_mask = preamble['input_mask']
     amplitude_relative = preamble['amplitude_relative']
     features = preamble['features']
-    labels = preamble['labels']
+    labels_amplitude = preamble['labels_amplitude']
+    labels_phase = preamble['labels_phase']
 
     distances = []
     accuracies = []
@@ -128,12 +142,14 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate, weight_typ
         if (epoch+1)%100 == 0 or epoch==0:
             print(f"epoch number {epoch+1}")
         
-        batches = shuffle_and_batch(features, labels, batch_size, rng_key)
+        batches = shuffle_and_batch(features, labels_amplitude, labels_phase, batch_size, rng_key)
         for batch in batches:
-            for feature, label in batch:
+            for feature, label_amplitude, label_phase in batch:
 
-                target = jnp.zeros(N)
-                target = target.at[outputn].set(label)
+                target_amp = jnp.zeros(N)
+                target_amp = target_amp.at[outputn].set(label_amplitude)
+                target_pha = jnp.zeros(N)
+                target_pha = target_pha.at[outputn].set(label_phase)
 
                 uField = uField.at[jnp.array(inputn)].set([feature[0], feature[1]])
 
@@ -154,8 +170,8 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate, weight_typ
 
 
                 # appending to training data arrays
-                distance_temp.append(determine_distance(amplitudes, label, outputn))
-                accuracies_temp.append(determine_accuracy(amplitudes, label, outputn, amplitude_relative))
+                distance_temp.append(determine_distance(amplitudes, phases, label_amplitude, label_phase, outputn, cost_mix_type))
+                accuracies_temp.append(determine_accuracy(amplitudes, phases, label_amplitude, label_phase, outputn, labels_amplitude, labels_phase, cost_mix_type))
 
                 if jnp.isnan(distance_temp[-1]):
                     print(f'distance found to be equal NaN, restarting at epoch {epoch}')
@@ -167,7 +183,7 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate, weight_typ
                     print(f"output vs label: {amplitudes[outputn]} ---- {label}")
                 """
 
-                states = solve_ode_nudged((init_amplitudes, init_phases), times, weights_real, weights_imaginary, alpha, omega, pField, uField, connections_neuronwise, input_mask, beta, target)
+                states = solve_ode_nudged((init_amplitudes, init_phases), times, weights_real, weights_imaginary, alpha, omega, pField, uField, connections_neuronwise, input_mask, beta, target_amp, target_pha)
                 amplitudes = states[0][-1]
                 phases = states[1][-1]
 
@@ -269,6 +285,7 @@ def main():
     parser.add_argument('label_multiplier', type=float, help="label multiplier value")
     parser.add_argument('high_value', type=float, help="high value for u-field randomization")
     parser.add_argument('beta_val', type=float, help="value of beta parameter")
+    parser.add_argument('cost_mix_type', type=str, help="type of cost mix, either 'times' ('t'), 'per' ('p'), 'squared' ('s') or single parameter 'phase' ('ph') or 'amplitude' ('am')")
     args = parser.parse_args()
 
     weight_option = {
@@ -278,7 +295,7 @@ def main():
     }
 
     while True:
-        answer = training_function(args.name, args.number, args.letter, args.num_of_epochs, args.learning_rate, args.weight_type, args.normalize, args.feature_multiplier, args.feature_constant, args.label_multiplier, weight_option, args.high_value, args.beta_val)
+        answer = training_function(args.name, args.number, args.letter, args.num_of_epochs, args.learning_rate, args.weight_type, args.normalize, args.feature_multiplier, args.feature_constant, args.label_multiplier, weight_option, args.high_value, args.beta_val, args.cost_mix_type)
         if answer == 0:
             break
 

@@ -8,6 +8,7 @@ LABEL_MULTI=0.3
 LEARNING_RATE=0.15
 HIGH_VALUE=0.01
 BETA_VALUE=0.1
+NUM_NEURONS=7
 
 echo "Before running, remember to set methods in main files to those corresponding to correct datasets and set appropriate size!"
 
@@ -20,10 +21,11 @@ run_simulation() {
     local high_value=$5
     local beta=$6
     local num_iterations=$7
+    local cost_mix_type=$8
     echo "Running simulation for $exp_name"
     for i in $(seq 1 $num_iterations); do
         echo "      Running simulation number $i"
-        python $script $exp_name $num_neurons y $NUM_EPOCHS $learning_rate r 0 $FEATURE_MUL $FEATURE_CON $LABEL_MULTI $high_value $beta
+        python $script $exp_name $num_neurons y $NUM_EPOCHS $learning_rate r 0 $FEATURE_MUL $FEATURE_CON $LABEL_MULTI $high_value $beta $cost_mix_type
     done
 }
 
@@ -32,12 +34,14 @@ export NUM_ITERATIONS NUM_EPOCHS FEATURE_MUL FEATURE_CON LABEL_MULTI
 
 # Create a list of commands to run
 commands=(
-    "run_simulation SL-training.py exp01-10-03-2025 5 $LEARNING_RATE $HIGH_VALUE $BETA_VALUE $NUM_ITERATIONS"
-    "run_simulation SL-training.py exp02-10-03-2025 5 $LEARNING_RATE $HIGH_VALUE $BETA_VALUE $NUM_ITERATIONS"
-    "run_simulation SL-training.py exp03-10-03-2025 7 $LEARNING_RATE $HIGH_VALUE $BETA_VALUE $NUM_ITERATIONS"
-    "run_simulation SL-training.py exp04-10-03-2025 7 $LEARNING_RATE $HIGH_VALUE $BETA_VALUE $NUM_ITERATIONS"
-    "run_simulation SL-training.py exp05-10-03-2025 12 $LEARNING_RATE $HIGH_VALUE $BETA_VALUE $NUM_ITERATIONS"
-    "run_simulation SL-training.py exp06-10-03-2025 12 $LEARNING_RATE $HIGH_VALUE $BETA_VALUE $NUM_ITERATIONS"
+    "run_simulation SL-training.py exp01-10-03-2025 $NUM_NEURONS $LEARNING_RATE $HIGH_VALUE $BETA_VALUE $NUM_ITERATIONS t"
+    "run_simulation SL-training.py exp02-10-03-2025 $NUM_NEURONS $LEARNING_RATE $HIGH_VALUE $BETA_VALUE $NUM_ITERATIONS t"
+    "run_simulation SL-training.py exp03-10-03-2025 $NUM_NEURONS $LEARNING_RATE $HIGH_VALUE $BETA_VALUE $NUM_ITERATIONS p"
+    "run_simulation SL-training.py exp04-10-03-2025 $NUM_NEURONS $LEARNING_RATE $HIGH_VALUE $BETA_VALUE $NUM_ITERATIONS p"
+    "run_simulation SL-training.py exp05-10-03-2025 $NUM_NEURONS $LEARNING_RATE $HIGH_VALUE $BETA_VALUE $NUM_ITERATIONS s"
+    "run_simulation SL-training.py exp06-10-03-2025 $NUM_NEURONS $LEARNING_RATE $HIGH_VALUE $BETA_VALUE $NUM_ITERATIONS s"
+    "run_simulation SL-training.py exp07-10-03-2025 $NUM_NEURONS $LEARNING_RATE $HIGH_VALUE $BETA_VALUE $NUM_ITERATIONS ph"
+    "run_simulation SL-training.py exp08-10-03-2025 $NUM_NEURONS $LEARNING_RATE $HIGH_VALUE $BETA_VALUE $NUM_ITERATIONS ph"
 )
 # Run commands in parallel using xargs
 printf "%s\n" "${commands[@]}" | xargs -P 10 -I {} bash -c "{} || true"
