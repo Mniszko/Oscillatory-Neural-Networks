@@ -169,7 +169,7 @@ def training_function(name, N, do_save, num_of_epochs, learning_rate, weight_typ
                 save_single_value(distance, name + "training.txt")
                 save_single_value(accuracy, name + "training_acc.txt")
                 save_single_value(label_as_index, name + "training_label.txt")
-                record_states(name + "test", amplitudes[outputn], phases[outputn])
+                record_states(name + "training", amplitudes[outputn], phases[outputn])
 
 
                 """
