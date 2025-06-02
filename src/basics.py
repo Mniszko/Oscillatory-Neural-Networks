@@ -103,6 +103,10 @@ def save_array_to_file(array, filename="savepoint.txt"):
         # Convert the array to a string representation and append a newline
         file.write(" ".join(map(str, array.flatten())) + "\n")
 
+def save_single_value(value, filename):
+    with open(filename, "a") as file:
+        file.write(str(value) + " ")
+
 def append_to_csv(filename, data_array):
     """
     Appends a single array (row) to the CSV file.
@@ -156,6 +160,11 @@ def calculate_energy_gradient(state, gradientWeights, N, gradientBiases = False)
             gradientBiases[i] = -densities[i]*densities[i]
     return gradientWeights, gradientBiases
 
+def record_important_values(name, amplitude_relative, rng_key):
+    filename = f"{name}_ampRel_rngKey.txt"
+    with open(filename, 'a') as file:
+        file.write(','.join(map(str,[amplitude_relative,rng_key])) + '\n')
+
 def record_states(name, amplitudes, phases):
     """
     Records amplitudes and phases as new lines in files.
@@ -184,6 +193,25 @@ def record_states(name, amplitudes, phases):
     with open(pha_filename, 'a') as pha_file:
         pha_file.write(','.join(map(str, phases)) + '\n')
 
+def record_all_states(name, all_amplitudes, all_phases):
+    """
+    Records all stored amplitudes and phases to files.
+
+    Parameters:
+    - name (str): Base name for the output files.
+    """
+    if all_amplitudes == False:
+        for i, phases in enumerate(all_phases):
+            record_states(name, [], phases)
+    elif all_phases == False:
+        for i, amplitudes in enumerate(all_amplitudes):
+            record_states(name, amplitudes, [])
+    # Call the original record_states function for each stored state
+    else:
+        for i, (amplitudes, phases) in enumerate(zip(all_amplitudes, all_phases)):
+            record_states(name, amplitudes, phases)
+    write_separator(name) # writes separator
+
 def write_separator(name, separator="-" * 40):
     """
     Writes a separator line into the amplitude and phase files.
@@ -203,3 +231,7 @@ def write_separator(name, separator="-" * 40):
     # Write separator to phases file
     with open(pha_filename, 'a') as pha_file:
         pha_file.write(separator + '\n')
+
+def write_separator_specific(filename, separator="-" * 40):
+    with open(filename, 'a') as file:
+        file.write(separator + '\n')

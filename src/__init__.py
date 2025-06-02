@@ -1,15 +1,17 @@
 from .KuramotoNeuralNetwork import run_function_pulsed, solve_K_ode_free, solve_K_ode_nudged, compute_kuramoto_gradients, determine_K_binary_distance, main_K_training_preamble
 # solve forward and solve backward should be named differently, though not the same as SL functions
 
-from .basics import read_and_plot, clear_csv, save_array_to_file, append_to_csv, save_parameters, load_parameters, record_states, write_separator
+from .basics import read_and_plot, clear_csv, save_array_to_file, append_to_csv, save_parameters, load_parameters, record_all_states, record_states, write_separator, save_single_value, record_important_values
 
-from .StuartLandauNeuralNet import solve_SL_ode_free, solve_SL_ode_nudged, sum_and_divide_array, main_SL_training_preamble, shuffle_and_batch, determine_SL_binary_distance
+from .StuartLandauNeuralNet import solve_SL_ode_free, solve_SL_ode_nudged, sum_and_divide_array, main_SL_training_preamble, shuffle_and_batch, determine_SL_binary_distance, testLoop
 
 from .WeightsModule import create_random_connections, create_square_lattice_connections, create_weight_update_mask, create_kuramoto_symmetric_weights
 
 from .XORProblem import XOR_problem_SL_determine_accuracy, XOR_problem_SL_map_features_and_labels, XOR_problem_K_map_features_and_labels, XOR_problem_K_determine_accuracy
 
 from .DoubleXORProblem import double_XOR_SL_map_features_and_labels, double_XOR_SL_determine_accuracy, double_XOR_K_map_features_and_labels, double_XOR_K_determine_accuracy
+
+from .OptDigits import OptDigits_SL_determine_accuracy, OptDigits_SL_map_features_and_labels_with_initial_randomization, OptDigits_SL_map_features_and_labels, OptDigits_separate_training_and_test
 
 """
 This module consists of methods used for running and training Stuart-Landau oscillatory neural networks. Input data has to be passed via bias term (u) and output is defined as amplitudes (or densities, which are the same).

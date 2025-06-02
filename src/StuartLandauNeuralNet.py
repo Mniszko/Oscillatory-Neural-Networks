@@ -4,6 +4,7 @@ from jax.experimental.ode import odeint
 from jax import jit, random
 from .InitializationModule import create_symmetric_weights, initialize_neurons, initialize_weights_and_SL_fields, initialize_simulation_params, initialize_SL_states_and_features
 from .WeightsModule import create_random_connections, create_square_lattice_connections, create_weight_update_mask
+from .basics import save_single_value, record_states
 
 # in this code I'm to use input with two methods simultaneously - via external force parameter (u_n) and via specific weight stabilization.
 @jit
@@ -116,10 +117,10 @@ def solve_SL_ode_nudged(state, times, weights_real, weights_imaginary, alpha, om
 def sum_and_divide_array(array, divisor):
     return jnp.sum(jnp.array(array))/divisor
 
-def determine_SL_binary_distance(amplitude, label, outputn):
-    return jnp.abs(jnp.sum(amplitude[outputn] - label))
+def determine_SL_binary_distance(amplitude, label_converted, outputn):
+    return jnp.sum((amplitude[outputn] - label_converted)**2)
 
-def main_SL_training_preamble(N, T, dt, omega, alpha, batch_size, random_init_times, inputn, outputn, rng_key, feature_multiplier, feature_constant, label_multiplier, weight_type, map_features_and_labels):
+def main_SL_training_preamble(N, T, dt, omega, alpha, batch_size, random_init_times, inputn, outputn, rng_key, feature_multiplier, feature_constant, label_multiplier, weight_type, map_features_and_labels, weight_option, beta_val, min_value, high_value, lattice_connections):
     """
     Function returning object of all parameters
     N - integer larger than number of inputs and number of outputs
@@ -133,10 +134,10 @@ def main_SL_training_preamble(N, T, dt, omega, alpha, batch_size, random_init_ti
     outputn - integer smaller than N and different from those in inputn
     map_features_and_labels - function mapping features and labels for a given problem to amplitudes
     """
-    neurons, connections_neuronwise = initialize_neurons(N, inputn)
-    weights_real, weights_real_matrix, weights_imaginary, weights_imaginary_matrix, weight_update_mask, pField, uField = initialize_weights_and_SL_fields(N, inputn, connections_neuronwise, rng_key)
+    neurons, connections_neuronwise = initialize_neurons(N, inputn, lattice_connections)
+    weights_real, weights_real_matrix, weights_imaginary, weights_imaginary_matrix, weight_update_mask, pField, uField = initialize_weights_and_SL_fields(N, inputn, connections_neuronwise, rng_key, weight_option, min_value, high_value)
     beta, inv_nudge_step, inv_batch_size, inv_random_init_times = initialize_simulation_params(
-        N, outputn, batch_size, random_init_times
+        N, outputn, batch_size, random_init_times, beta_val
     )
     if weight_type == 'r':
         weights_imaginary *= 0
@@ -148,8 +149,8 @@ def main_SL_training_preamble(N, T, dt, omega, alpha, batch_size, random_init_ti
         pass
 
     times = jnp.arange(0, T + dt, dt)
-    init_amplitudes = jax.random.uniform(rng_key, shape=(N,), minval=-1, maxval=1)/2 + 2
-    init_phases = jax.random.uniform(rng_key, shape=(N,), minval=-jnp.pi, maxval=jnp.pi)/200
+    init_amplitudes = jax.random.uniform(rng_key, shape=(N,), minval=1.5, maxval=2.5)
+    init_phases = jax.random.uniform(rng_key, shape=(N,), minval=-jnp.pi, maxval=jnp.pi)
 
     # input mask for choosing naurons that do not evolve (here unused)
     input_mask = jnp.ones(N)
@@ -159,7 +160,7 @@ def main_SL_training_preamble(N, T, dt, omega, alpha, batch_size, random_init_ti
 
     init_amplitudes = states[0][-1]
     init_phases = states[1][-1]
-    amplitude_relative, features, labels = initialize_SL_states_and_features(feature_multiplier, feature_constant, label_multiplier, init_amplitudes, init_phases, uField, inputn, outputn, map_features_and_labels)
+    amplitude_relative, features, labels = initialize_SL_states_and_features(feature_multiplier, feature_constant, label_multiplier, init_amplitudes, init_phases, uField, inputn, outputn, map_features_and_labels, rng_key)
 
     return {
         'neurons': neurons,
@@ -220,3 +221,39 @@ def shuffle_and_batch(array1, array2, batch_size, key):
     ]
 
     return batches
+
+
+def testLoop(solve_ode_free, state, times, weights_real, weights_imaginary, alpha, omega, pField, uField, coupled_neuron, input_mask, name, outputn, test_dataset_features, test_dataset_labels):
+    """
+    returns result or forces restart (returns 1) in case something bad happens during inference
+    """
+    for feature, label in zip(test_dataset_features, test_dataset_labels):
+        states = solve_ode_free((init_amplitudes, init_phases), times, weights_real, weights_imaginary, alpha, omega, pField, uField, connections_neuronwise, input_mask)
+        amplitudes = states[0][-1]
+        phases = states[1][-1]
+        if any(x > 1e-5 for x in (states[0][-10] - states[0][-1])):
+            if not T==400:
+                T=400 # first we try to make simulation time longer, if that doesn't work the parameters are discarted
+            else:
+                print(f"\tNonstable final state encountered! Restarting at epoch {epoch}")
+                return 1
+        distance_temp = determine_distance(amplitudes, label, outputn)
+        accuracy_temp = determine_accuracy(amplitudes, label, outputn, amplitude_relative, label_multiplier)
+        label_as_index = jnp.argmax(label)
+
+        save_single_value(distance, name + "test.txt")
+        save_single_value(accuracy, name + "test_acc.txt")
+        save_single_value(label_as_index, name + "test_label.txt")
+        record_states(name + "test", amplitudes[outputn], phases[outputn])
+
+        if jnp.isnan(distance_temp[-1]):
+            print(f'distance found to be equal NaN, restarting at epoch {epoch}')
+            return 1
+
+    # writing (newline) separator
+    save_single_value('\n', name + "test.txt")
+    save_single_value('\n', name + "test_acc.txt")
+    save_single_value('\n', name + "test_label.txt")
+    save_single_value('-'*10, name + "test_amp.txt")
+    save_single_value('-'*10, name + "test_pha.txt")
+    return 0

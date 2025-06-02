@@ -17,7 +17,7 @@ def XOR_problem_SL_determine_accuracy(amplitude, label, outputn, amplitude_relat
 '''
 
 # new accuracy determining method
-def XOR_problem_SL_determine_accuracy(amplitude, label, outputn, amplitude_relative):
+def XOR_problem_SL_determine_accuracy(amplitude, label, outputn, amplitude_relative, label_multiplier):
     return (
         (amplitude[outputn[0]] > amplitude_relative) == (label[0] > amplitude_relative)
     )
@@ -26,10 +26,7 @@ def XOR_problem_SL_map_features_and_labels(feature_multiplier, feature_constant,
     """
     Function assumes that outputn has one element matching the XOR problem
     """
-    if type(amplitudes) == int:
-        amplitude_relative = amplitudes
-    else:
-        amplitude_relative = amplitudes[outputn[0]]
+    amplitude_relative = amplitudes[outputn[0]]
 
     features = jnp.array([
         [0,0],

@@ -45,7 +45,7 @@ def double_XOR_SL_map_features_and_labels(feature_multiplier, feature_constant, 
     labels = labels * label_multiplier + amplitude_relative
     return amplitude_relative, features, labels
 
-def double_XOR_SL_determine_accuracy(amplitude, label, outputn, amplitude_relative):
+def double_XOR_SL_determine_accuracy(amplitude, label, outputn, amplitude_relative, label_multiplier):
     return (
         (amplitude[outputn[0]] > amplitude_relative) == (label[0] > amplitude_relative) and
         (amplitude[outputn[1]] > amplitude_relative) == (label[1] > amplitude_relative)

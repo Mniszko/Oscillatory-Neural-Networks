@@ -1,5 +1,64 @@
 import jax.numpy as jnp
 
+def create_triangular_lattice_connections(n_points, visualize=False):
+    """
+    Generate a weight matrix for a triangular lattice with nearest neighbor connections.
+    
+    Parameters:
+    n_points (int): Number of points in the lattice
+    
+    Returns:
+    tuple: (points, weight_matrix) where:
+        - points: 2D coordinates of points in the lattice
+        - weight_matrix: Adjacency matrix with weights (1 for connected, 0 otherwise)
+    """
+    height = round(math.sqrt(n_points * 2 / math.sqrt(3)))
+    if height < 1:
+        height = 1
+    
+    # Generate coordinates for triangular lattice
+    points = []
+    for i in range(height):
+        x_offset = 0.5 if i % 2 else 0
+        row_width = round(n_points / height)
+        for j in range(row_width):
+            x = j + x_offset
+            y = i * math.sqrt(3)/2
+            points.append([x, y])
+    
+    # If we generated too many points, trim the list
+    points = np.array(points[:n_points])
+
+    connections_neuronwise = np.zeros((n_points, n_points))
+    dist_matrix = np.zeros((n_points, n_points))
+    for i in range(n_points):
+        for j in range(n_points):
+            dist_matrix[i,j] = np.linalg.norm(points[i] - points[j])
+    
+    # Find the smallest non-zero distance to determine connection threshold (nearest-neighbor)
+    min_dist = np.min(dist_matrix[dist_matrix > 0])
+    connection_threshold = min_dist * 1.1
+    for i in range(n_points):
+        for j in range(i+1, n_points):
+            if dist_matrix[i,j] < connection_threshold:
+                connections_neuronwise[i,j] = 1
+                connections_neuronwise[j,i] = 1
+    
+    if visualize:
+        import matplotlib.pyplot as plt
+        plt.figure(figsize=(8, 8))
+        plt.scatter(points[:, 0], points[:, 1])
+        plt.figure(figsize=(8, 8))
+        plt.scatter(points[:, 0], points[:, 1])
+        for i in range(n):
+            for j in range(i+1, n):
+                if weights[i,j] > 0:
+                    plt.plot([points[i,0], points[j,0]], [points[i,1], points[j,1]], 'b-', alpha=0.3)
+        plt.title('Triangular Lattice with Nearest Neighbor Connections')
+        plt.show()
+
+    return jnp.array(connections_neuronwise) + jnp.eye(n_points)
+
 # Needs to be checked for accuracy:
 def create_random_connections(num_neurons, min_connections=4, max_connections=None):
     """
@@ -86,14 +145,14 @@ def create_square_lattice_connections(grid_size):
 
 
 # Function to create weight update mask
-def create_weight_update_mask(N, inputn):
-    weight_update_mask = jnp.ones((N, N))
+def create_weight_update_mask(N, inputn, connections_neuronwise=None):
     """
-    # uses selected weights as inputs
-    for i in inputn:
-        weight_update_mask = weight_update_mask.at[i, inputn].set(0)
-        weight_update_mask = weight_update_mask.at[inputn, i].set(0)
+    returns connections neuronwise with diagonal equated to zeros or generates all to all connections with zeros at diagonal
     """
+    if connections_neuronwise==None:
+        weight_update_mask = jnp.ones((N, N))
+    else:
+        weight_update_mask = connections_neuronwise
     # setting diagonal to 0s
     diagonal_indices = jnp.arange(weight_update_mask.shape[0])
     weight_update_mask = weight_update_mask.at[diagonal_indices, diagonal_indices].set(0)
